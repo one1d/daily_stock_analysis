@@ -1,118 +1,230 @@
 # AGENTS.md
 
-本文件定义在本仓库中执行开发、Issue 分析、PR 审查时的统一行为准则。  
+This file defines the unified behavior guidelines for development, Issue analysis, and PR review in this repository.
 
-## 1. 通用协作原则
+## 1. General Collaboration Principles
 
-- 语言与栈：Python 3.10+，遵循仓库现有架构与目录边界。
-- 配置约束：统一使用 `.env`（参见 `.env.example`）。
-- 代码质量：优先保证可运行、可回归验证、可追踪（日志/错误信息清晰）。
-- 风格约束：
-  - 行宽 120
+- **Language & Stack**: Python 3.10+, follow repository architecture and directory boundaries.
+- **Configuration**: Use `.env` (see `.env.example`).
+- **Code Quality**: Prioritize runnable, regression-verifiable, traceable code (clear logs/errors).
+- **Style Constraints**:
+  - Line width: 120
   - `black` + `isort` + `flake8`
-  - 关键变更需至少做语法检查（`py_compile`）或对应测试验证。
-  - 新增或修改的代码注释必须使用英文。
-- Git 约束：
-  - 未经明确确认，不执行 `git commit`。
-  - commit message 不添加 `Co-Authored-By`。
-  - 后续所有 commit message 必须使用英文。
+  - Critical changes require syntax check (`py_compile`) or corresponding test verification.
+  - New or modified code comments must use English.
+- **Git Constraints**:
+  - Do not execute `git commit` without explicit confirmation.
+  - Commit messages exclude `Co-Authored-By` attribution.
+  - All subsequent commit messages must be in English.
 
-## 2. Issue 分析原则
+## 2. Build, Lint & Test Commands
 
-每个 Issue 必须先回答 3 个问题：
+### Quick Reference
 
-1. 是否合理（Reasonable）
-- 是否描述了真实影响（功能错误、数据错误、性能/稳定性问题、体验退化）。
-- 是否有可验证证据（日志、截图、复现步骤、版本信息）。
-- 是否与项目目标相关（股票分析、数据源、通知、API/WebUI、部署链路）。
+```bash
+# Syntax check (all critical files)
+python -m py_compile main.py src/config.py src/notification.py src/analyzer.py
 
-2. 是否是 Issue（Valid Issue）
-- 属于缺陷/功能缺失/回归/文档错误之一，而非纯咨询或环境误用。
-- 能定位到仓库责任边界；若是三方服务波动，也需判断是否需要仓库侧兜底。
-- 如果是使用问题，应转为文档改进或 FAQ，而不是代码缺陷。
+# Syntax check specific modules
+python -m py_compile src/*.py data_provider/*.py
 
-3. 是否好解决（Solvability）
-- 可否稳定复现。
-- 依赖是否可控（第三方 API、网络、权限、密钥）。
-- 变更范围与风险等级（低/中/高）。
-- 是否存在临时缓解方案（降级、兜底、开关、重试、回退策略）。
+# Flake8 critical checks only
+flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-### Issue 结论模板
+# Full flake8 with project line length
+flake8 main.py src/ --max-line-length=120
 
-- 结论：`成立 / 部分成立 / 不成立`
-- 分类：`bug / feature / docs / question / external`
-- 优先级：`P0 / P1 / P2 / P3`
-- 难度：`easy / medium / hard`
-- 建议：`立即修复 / 排期修复 / 文档澄清 / 关闭`
+# Run single test scenario
+./test.sh quick       # Quick test (single stock)
+./test.sh syntax     # Syntax check only
+./test.sh code       # Code recognition tests
+./test.sh yfinance   # YFinance conversion tests
+./test.sh flake8     # Flake8 linting
+./test.sh market    # Market review test
+./test.sh a-stock   # A-share stock test
+./test.sh us-stock  # US stock test
+./test.sh dry-run   # Dry-run mode
 
-## 3. PR 分析原则
+# Run all tests
+./test.sh all
 
-每个 PR 需按以下顺序审查：
+# CI gate (runs in CI)
+./scripts/ci_gate.sh
+```
 
-1. 必要性（Necessity）
-- 是否解决明确问题，或提供明确业务价值。
-- 是否避免“为了改而改”的重构。
+### Test Scenarios Available
 
-2. 关联性（Traceability）
-- 是否关联对应 Issue（建议必须有：`Fixes #xxx` 或 `Refs #xxx`）。
-- 若无 Issue，PR 描述必须给出动机、场景与验收标准。
+| Scenario | Description |
+|----------|-------------|
+| `quick` | Fast single stock test (recommended) |
+| `syntax` | Python syntax check |
+| `code` | Stock code recognition tests |
+| `yfinance` | YFinance code conversion tests |
+| `flake8` | Static analysis check |
+| `market` | Market review only |
+| `a-stock` | A-share stock analysis |
+| `etf` | ETF analysis |
+| `hk-stock` | Hong Kong stock analysis |
+| `us-stock` | US stock analysis |
+| `mixed` | Mixed market analysis |
+| `single` | Single stock push mode |
+| `dry-run` | Data fetch only, no AI analysis |
+| `full` | Complete flow test |
+| `all` | Run all tests |
 
-3. 类型判定（Type）
-- 明确标注：`fix / feat / refactor / docs / chore / test`。
-- 对“fix/bug”类 PR：必须说明原问题、根因、修复点、回归风险。
+## 3. Code Style Guidelines
 
-4. 描述完整性（Description Completeness）
-- 必须包含：
-  - 背景与问题
-  - 变更范围（改了哪些模块）
-  - 验证方式与结果（命令、关键输出）
-  - 兼容性与破坏性变更说明（如有）
-  - 回滚方案（至少一句）
-  - 若为 issue 修复：在 PR description 中显式写明关闭语句（如 `Fixes #241` / `Closes #241`）
+### Formatting
 
-5. 合入判定（Merge Readiness）
-- 可直接合入（Ready to Merge）条件：
-  - 目标明确且必要
-  - 有 Issue 或同等质量的问题描述
-  - 变更与描述一致，无隐藏副作用
-  - 关键验证已通过（语法/测试/关键链路）
-  - 无阻断性风险（安全、数据损坏、明显性能回退）
-- 不可直接合入（Not Ready）条件：
-  - 描述不完整，无法确认动机和影响
-  - 无验证证据
-  - 引入明显风险且无回滚策略
-  - 与仓库方向无关或重复实现
+- **Line length**: 120 characters max
+- **Formatter**: `black` (auto-formats on save)
+- **Import sort**: `isort` (sorted by type: stdlib → third-party → local)
+- **No trailing whitespace**
 
-## 4. 交付与发布同步原则
+### Imports
 
-- 功能开发、缺陷修复完成后，必须同步更新文档：
-  - `README.md`（用户可见能力、使用方式、配置项变化）
-  - `docs/CHANGELOG.md`（版本变更记录、影响范围、兼容性说明）
-- 发布语义必须与改动规模匹配，在提交说明中添加对应 tag 标签：
-  - `#patch`：修复类、小改动
-  - `#minor`：新增可用功能、向后兼容
-  - `#major`：破坏性变更或重大架构调整
-  - `#skip` / `#none`：明确不触发自动版本标签
-- 若改动用于解决已有 issue，PR description 必须声明关闭该 issue（`Fixes #xxx` / `Closes #xxx`），避免修复完成后 issue 悬挂。
+```python
+# Standard library
+import os
+import re
+from pathlib import Path
+from typing import List, Optional, Tuple
 
-## 5. 建议评审输出格式
+# Third-party
+from dotenv import load_dotenv
+from dataclasses import dataclass, field
 
-### Issue 评审输出
+# Local (relative imports)
+from src.config import get_config
+from src.analyzer import AnalysisResult
+```
 
-- `是否合理`：是/否 + 理由
-- `是否是 issue`：是/否 + 理由
-- `是否好解决`：是/否 + 难点
-- `建议动作`：修复/排期/文档/关闭
+### Type Hints
 
-### PR 评审输出
+- Use type hints for all function parameters and return values
+- Use `Optional[X]` instead of `X | None`
+- Use `List[X]`, `Dict[X, Y]` from typing (not built-in list/dict)
 
-- `必要性`：通过/不通过
-- `是否有对应 issue`：有/无（编号）
-- `PR 类型`：fix/feat/...
-- `description 完整性`：完整/不完整（缺失项）
-- `是否可直接合入`：可/不可 + 必改项
+```python
+def get_config() -> Config:
+    ...
 
-## 6. 快速检查命令（可选）
+def validate(self) -> List[str]:
+    ...
+```
+
+### Naming Conventions
+
+- **Classes**: `PascalCase` (e.g., `NotificationService`, `Config`)
+- **Functions/methods**: `snake_case` (e.g., `get_config()`, `_detect_all_channels()`)
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `WECHAT_IMAGE_MAX_BYTES`)
+- **Private methods**: prefix with `_` (e.g., `_is_telegram_configured()`)
+- **Variables**: `snake_case` (e.g., `stock_list`, `wechat_url`)
+
+### Docstrings
+
+Use Google-style docstrings in English:
+
+```python
+def get_config() -> Config:
+    """
+    Get global configuration instance.
+
+    Returns:
+        Config: The singleton configuration instance.
+    """
+```
+
+### Error Handling
+
+- Never suppress errors with `except: pass` or bare `except:`
+- Log errors before re-raising or handling
+- Use specific exception types
+- Always handle cleanup in `finally` blocks when needed
+
+```python
+try:
+    result = fetcher.fetch()
+except requests.RequestException as e:
+    logger.error(f"Failed to fetch data: {e}")
+    raise
+```
+
+### Logging
+
+- Use `logger = logging.getLogger(__name__)` at module level
+- Log levels: `DEBUG` (dev), `INFO` (normal), `WARNING` (attention), `ERROR` (failure)
+
+### Constants
+
+- Put module-level constants at the top of the file after imports
+- Use meaningful names (e.g., `MAX_RETRIES = 3` not `MAX = 3`)
+
+## 4. Issue Analysis Principles
+
+Each Issue must answer 3 questions:
+
+1. **Reasonable**
+   - Does it describe real impact (bug, data error, performance, UX)?
+   - Is there verifiable evidence (logs, screenshots, steps)?
+   - Is it relevant to project goals?
+
+2. **Valid Issue**
+   - Is it a defect/feature missing/regression/docs error?
+   - Can it be traced to repository responsibility?
+   - If it's a usage problem, convert to docs improvement
+
+3. **Solvable**
+   - Can it be reliably reproduced?
+   - Are dependencies controllable?
+   - What's the risk level?
+   - Is there a workaround?
+
+### Issue Conclusion Template
+
+- **Conclusion**: `Valid / Partially Valid / Invalid`
+- **Category**: `bug / feature / docs / question / external`
+- **Priority**: `P0 / P1 / P2 / P3`
+- **Difficulty**: `easy / medium / hard`
+- **Suggested Action**: `Fix Now / Schedule / Doc Clarification / Close`
+
+## 5. PR Analysis Principles
+
+### Review Order
+
+1. **Necessity**: Does it solve a clear problem with business value?
+2. **Traceability**: Is there a linked Issue (`Fixes #xxx` or `Refs #xxx`)?
+3. **Type**: `fix / feat / refactor / docs / chore / test`
+4. **Description Completeness**: Must include:
+   - Background & problem
+   - Change scope
+   - Verification method & results
+   - Compatibility notes
+   - Rollback plan
+   - Issue closing statement if applicable
+5. **Merge Readiness**: Target clear, changes match description, tests pass, no blocking risks
+
+### PR Review Output
+
+- **Necessity**: Pass/Fail
+- **Has Issue**: Yes/No (issue #)
+- **Type**: fix/feat/...
+- **Description**: Complete/Incomplete (missing items)
+- **Ready to Merge**: Yes/No + required changes
+
+## 6. Delivery & Release Sync
+
+- Feature/fix completion requires docs update:
+  - `README.md` (user-facing capabilities, config changes)
+  - `docs/CHANGELOG.md` (version changes, impact, compatibility)
+- Version tags in commit messages:
+  - `#patch`: Fixes, small changes
+  - `#minor`: New features, backward compatible
+  - `#major`: Breaking changes, major architecture
+  - `#skip` / `#none`: No version tag
+- PRs fixing issues must include closing statement (`Fixes #xxx`)
+
+## 7. Quick Check Commands
 
 ```bash
 ./test.sh syntax
