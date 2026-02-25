@@ -45,6 +45,10 @@
 ### 文档（#skip）
 - 📝 **Agent 文档补充**
   - 更新 `README.md`、`docs/README_EN.md`、`docs/README_CHT.md` 与 changelog，补充策略问股使用说明与测试说明
+- 📝 **新增 CLAUDE.md 与 AGENTS.md 优化**
+  - 新增 `CLAUDE.md`，为 Claude Code 提供项目概述、常用命令、架构图和代码风格指引
+  - 更新 `AGENTS.md`：中文译为英文，新增代码风格指南章节（格式化、导入、类型提示、命名规范、错误处理等）
+  - 添加 `docs/ANALYSIS.md`、`docs/PROJECT_ANALYSIS.md`、`docs/TECHNICAL_ANALYSIS.md` 至 .gitignore
 
 ## [3.2.11] - 2026-02-23
 
