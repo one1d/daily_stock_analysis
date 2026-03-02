@@ -742,20 +742,25 @@ def _infer_category(key: str) -> str:
         )
     ):
         return "data_source"
-    if key.startswith((
-        "WECHAT",
-        "FEISHU",
-        "TELEGRAM",
-        "EMAIL",
-        "PUSHOVER",
-        "PUSHPLUS",
-        "SERVERCHAN",
-        "DINGTALK",
-        "DISCORD",
-        "CUSTOM_WEBHOOK",
-        "WECOM",
-        "ASTRBOT",
-    )) or "WEBHOOK" in key:
+    if (
+        key.startswith(
+            (
+                "WECHAT",
+                "FEISHU",
+                "TELEGRAM",
+                "EMAIL",
+                "PUSHOVER",
+                "PUSHPLUS",
+                "SERVERCHAN",
+                "DINGTALK",
+                "DISCORD",
+                "CUSTOM_WEBHOOK",
+                "WECOM",
+                "ASTRBOT",
+            )
+        )
+        or "WEBHOOK" in key
+    ):
         return "notification"
     if key.startswith(("LOG_", "SCHEDULE_", "WEBUI_", "HTTP_", "HTTPS_", "MAX_", "DEBUG")):
         return "system"

@@ -21,8 +21,11 @@ A股自选股智能分析系统 - 主调度程序
 - 效率优先：关注筹码集中度好的股票
 - 买点偏好：缩量回踩 MA5/MA10 支撑
 """
+
 import os
+
 from src.config import setup_env
+
 setup_env()
 
 # 代理配置 - 通过 USE_PROXY 环境变量控制，默认关闭
@@ -40,17 +43,15 @@ import logging
 import sys
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
 from data_provider.base import canonical_stock_code
-from src.core.pipeline import StockAnalysisPipeline
+from src.config import Config, get_config
 from src.core.market_review import run_market_review
-
-from src.config import get_config, Config
+from src.core.pipeline import StockAnalysisPipeline
 from src.logging_config import setup_logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +59,9 @@ logger = logging.getLogger(__name__)
 def parse_arguments() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(
-        description='A股自选股智能分析系统',
+        description="A股自选股智能分析系统",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='''
+        epilog="""
 示例:
   python main.py                    # 正常运行
   python main.py --debug            # 调试模式
@@ -70,149 +71,58 @@ def parse_arguments() -> argparse.Namespace:
   python main.py --single-notify    # 启用单股推送模式（每分析完一只立即推送）
   python main.py --schedule         # 启用定时任务模式
   python main.py --market-review    # 仅运行大盘复盘
-        '''
+        """,
     )
 
-    parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='启用调试模式，输出详细日志'
-    )
+    parser.add_argument("--debug", action="store_true", help="启用调试模式，输出详细日志")
+
+    parser.add_argument("--dry-run", action="store_true", help="仅获取数据，不进行 AI 分析")
+
+    parser.add_argument("--stocks", type=str, help="指定要分析的股票代码，逗号分隔（覆盖配置文件）")
+
+    parser.add_argument("--no-notify", action="store_true", help="不发送推送通知")
 
     parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='仅获取数据，不进行 AI 分析'
+        "--single-notify", action="store_true", help="启用单股推送模式：每分析完一只股票立即推送，而不是汇总推送"
     )
 
-    parser.add_argument(
-        '--stocks',
-        type=str,
-        help='指定要分析的股票代码，逗号分隔（覆盖配置文件）'
-    )
+    parser.add_argument("--workers", type=int, default=None, help="并发线程数（默认使用配置值）")
 
-    parser.add_argument(
-        '--no-notify',
-        action='store_true',
-        help='不发送推送通知'
-    )
+    parser.add_argument("--schedule", action="store_true", help="启用定时任务模式，每日定时执行")
 
-    parser.add_argument(
-        '--single-notify',
-        action='store_true',
-        help='启用单股推送模式：每分析完一只股票立即推送，而不是汇总推送'
-    )
+    parser.add_argument("--no-run-immediately", action="store_true", help="定时任务启动时不立即执行一次")
 
-    parser.add_argument(
-        '--workers',
-        type=int,
-        default=None,
-        help='并发线程数（默认使用配置值）'
-    )
+    parser.add_argument("--market-review", action="store_true", help="仅运行大盘复盘分析")
 
-    parser.add_argument(
-        '--schedule',
-        action='store_true',
-        help='启用定时任务模式，每日定时执行'
-    )
+    parser.add_argument("--no-market-review", action="store_true", help="跳过大盘复盘分析")
 
-    parser.add_argument(
-        '--no-run-immediately',
-        action='store_true',
-        help='定时任务启动时不立即执行一次'
-    )
+    parser.add_argument("--webui", action="store_true", help="启动 Web 管理界面")
 
-    parser.add_argument(
-        '--market-review',
-        action='store_true',
-        help='仅运行大盘复盘分析'
-    )
+    parser.add_argument("--webui-only", action="store_true", help="仅启动 Web 服务，不执行自动分析")
 
-    parser.add_argument(
-        '--no-market-review',
-        action='store_true',
-        help='跳过大盘复盘分析'
-    )
+    parser.add_argument("--serve", action="store_true", help="启动 FastAPI 后端服务（同时执行分析任务）")
 
-    parser.add_argument(
-        '--webui',
-        action='store_true',
-        help='启动 Web 管理界面'
-    )
+    parser.add_argument("--serve-only", action="store_true", help="仅启动 FastAPI 后端服务，不自动执行分析")
 
-    parser.add_argument(
-        '--webui-only',
-        action='store_true',
-        help='仅启动 Web 服务，不执行自动分析'
-    )
+    parser.add_argument("--port", type=int, default=8000, help="FastAPI 服务端口（默认 8000）")
 
-    parser.add_argument(
-        '--serve',
-        action='store_true',
-        help='启动 FastAPI 后端服务（同时执行分析任务）'
-    )
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="FastAPI 服务监听地址（默认 0.0.0.0）")
 
-    parser.add_argument(
-        '--serve-only',
-        action='store_true',
-        help='仅启动 FastAPI 后端服务，不自动执行分析'
-    )
-
-    parser.add_argument(
-        '--port',
-        type=int,
-        default=8000,
-        help='FastAPI 服务端口（默认 8000）'
-    )
-
-    parser.add_argument(
-        '--host',
-        type=str,
-        default='0.0.0.0',
-        help='FastAPI 服务监听地址（默认 0.0.0.0）'
-    )
-
-    parser.add_argument(
-        '--no-context-snapshot',
-        action='store_true',
-        help='不保存分析上下文快照'
-    )
+    parser.add_argument("--no-context-snapshot", action="store_true", help="不保存分析上下文快照")
 
     # === Backtest ===
-    parser.add_argument(
-        '--backtest',
-        action='store_true',
-        help='运行回测（对历史分析结果进行评估）'
-    )
+    parser.add_argument("--backtest", action="store_true", help="运行回测（对历史分析结果进行评估）")
 
-    parser.add_argument(
-        '--backtest-code',
-        type=str,
-        default=None,
-        help='仅回测指定股票代码'
-    )
+    parser.add_argument("--backtest-code", type=str, default=None, help="仅回测指定股票代码")
 
-    parser.add_argument(
-        '--backtest-days',
-        type=int,
-        default=None,
-        help='回测评估窗口（交易日数，默认使用配置）'
-    )
+    parser.add_argument("--backtest-days", type=int, default=None, help="回测评估窗口（交易日数，默认使用配置）")
 
-    parser.add_argument(
-        '--backtest-force',
-        action='store_true',
-        help='强制回测（即使已有回测结果也重新计算）'
-    )
+    parser.add_argument("--backtest-force", action="store_true", help="强制回测（即使已有回测结果也重新计算）")
 
     return parser.parse_args()
 
 
-def run_full_analysis(
-    config: Config,
-    args: argparse.Namespace,
-    stock_codes: Optional[List[str]] = None
-):
+def run_full_analysis(config: Config, args: argparse.Namespace, stock_codes: Optional[List[str]] = None):
     """
     执行完整的分析流程（个股 + 大盘复盘）
 
@@ -220,20 +130,20 @@ def run_full_analysis(
     """
     try:
         # 命令行参数 --single-notify 覆盖配置（#55）
-        if getattr(args, 'single_notify', False):
+        if getattr(args, "single_notify", False):
             config.single_stock_notify = True
 
         # Issue #190: 个股与大盘复盘合并推送
         merge_notification = (
-            getattr(config, 'merge_email_notification', False)
+            getattr(config, "merge_email_notification", False)
             and config.market_review_enabled
-            and not getattr(args, 'no_market_review', False)
+            and not getattr(args, "no_market_review", False)
             and not config.single_stock_notify
         )
 
         # 创建调度器
         save_context_snapshot = None
-        if getattr(args, 'no_context_snapshot', False):
+        if getattr(args, "no_context_snapshot", False):
             save_context_snapshot = False
         query_id = uuid.uuid4().hex
         pipeline = StockAnalysisPipeline(
@@ -241,7 +151,7 @@ def run_full_analysis(
             max_workers=args.workers,
             query_id=query_id,
             query_source="cli",
-            save_context_snapshot=save_context_snapshot
+            save_context_snapshot=save_context_snapshot,
         )
 
         # 1. 运行个股分析
@@ -249,11 +159,11 @@ def run_full_analysis(
             stock_codes=stock_codes,
             dry_run=args.dry_run,
             send_notification=not args.no_notify,
-            merge_notification=merge_notification
+            merge_notification=merge_notification,
         )
 
         # Issue #128: 分析间隔 - 在个股分析和大盘分析之间添加延迟
-        analysis_delay = getattr(config, 'analysis_delay', 0)
+        analysis_delay = getattr(config, "analysis_delay", 0)
         if analysis_delay > 0 and config.market_review_enabled and not args.no_market_review:
             logger.info(f"等待 {analysis_delay} 秒后执行大盘复盘（避免API限流）...")
             time.sleep(analysis_delay)
@@ -267,7 +177,7 @@ def run_full_analysis(
                 analyzer=pipeline.analyzer,
                 search_service=pipeline.search_service,
                 send_notification=not args.no_notify,
-                merge_notification=merge_notification
+                merge_notification=merge_notification,
             )
             # 如果有结果，赋值给 market_report 用于后续飞书文档生成
             if review_result:
@@ -339,15 +249,15 @@ def run_full_analysis(
 
         # === Auto backtest ===
         try:
-            if getattr(config, 'backtest_enabled', False):
+            if getattr(config, "backtest_enabled", False):
                 from src.services.backtest_service import BacktestService
 
                 logger.info("开始自动回测...")
                 service = BacktestService()
                 stats = service.run_backtest(
                     force=False,
-                    eval_window_days=getattr(config, 'backtest_eval_window_days', 10),
-                    min_age_days=getattr(config, 'backtest_min_age_days', 14),
+                    eval_window_days=getattr(config, "backtest_eval_window_days", 10),
+                    min_age_days=getattr(config, "backtest_min_age_days", 14),
                     limit=200,
                 )
                 logger.info(
@@ -364,13 +274,14 @@ def run_full_analysis(
 def start_api_server(host: str, port: int, config: Config) -> None:
     """
     在后台线程启动 FastAPI 服务
-    
+
     Args:
         host: 监听地址
         port: 监听端口
         config: 配置对象
     """
     import threading
+
     import uvicorn
 
     def run_server():
@@ -393,7 +304,8 @@ def start_bot_stream_clients(config: Config) -> None:
     # 启动钉钉 Stream 客户端
     if config.dingtalk_stream_enabled:
         try:
-            from bot.platforms import start_dingtalk_stream_background, DINGTALK_STREAM_AVAILABLE
+            from bot.platforms import DINGTALK_STREAM_AVAILABLE, start_dingtalk_stream_background
+
             if DINGTALK_STREAM_AVAILABLE:
                 if start_dingtalk_stream_background():
                     logger.info("[Main] Dingtalk Stream client started in background.")
@@ -406,9 +318,10 @@ def start_bot_stream_clients(config: Config) -> None:
             logger.error(f"[Main] Failed to start Dingtalk Stream client: {exc}")
 
     # 启动飞书 Stream 客户端
-    if getattr(config, 'feishu_stream_enabled', False):
+    if getattr(config, "feishu_stream_enabled", False):
         try:
-            from bot.platforms import start_feishu_stream_background, FEISHU_SDK_AVAILABLE
+            from bot.platforms import FEISHU_SDK_AVAILABLE, start_feishu_stream_background
+
             if FEISHU_SDK_AVAILABLE:
                 if start_feishu_stream_background():
                     logger.info("[Main] Feishu Stream client started in background.")
@@ -450,7 +363,7 @@ def main() -> int:
     # 解析股票列表（统一为大写 Issue #355）
     stock_codes = None
     if args.stocks:
-        stock_codes = [canonical_stock_code(c) for c in args.stocks.split(',') if (c or "").strip()]
+        stock_codes = [canonical_stock_code(c) for c in args.stocks.split(",") if (c or "").strip()]
         logger.info(f"使用命令行指定的股票列表: {stock_codes}")
 
     # === 处理 --webui / --webui-only 参数，映射到 --serve / --serve-only ===
@@ -468,10 +381,10 @@ def main() -> int:
 
     # 兼容旧版 WEBUI_HOST/WEBUI_PORT：如果用户未通过 --host/--port 指定，则使用旧变量
     if start_serve:
-        if args.host == '0.0.0.0' and os.getenv('WEBUI_HOST'):
-            args.host = os.getenv('WEBUI_HOST')
-        if args.port == 8000 and os.getenv('WEBUI_PORT'):
-            args.port = int(os.getenv('WEBUI_PORT'))
+        if args.host == "0.0.0.0" and os.getenv("WEBUI_HOST"):
+            args.host = os.getenv("WEBUI_HOST")
+        if args.port == 8000 and os.getenv("WEBUI_PORT"):
+            args.port = int(os.getenv("WEBUI_PORT"))
 
     bot_clients_started = False
     if start_serve:
@@ -500,15 +413,15 @@ def main() -> int:
 
     try:
         # 模式0: 回测
-        if getattr(args, 'backtest', False):
+        if getattr(args, "backtest", False):
             logger.info("模式: 回测")
             from src.services.backtest_service import BacktestService
 
             service = BacktestService()
             stats = service.run_backtest(
-                code=getattr(args, 'backtest_code', None),
-                force=getattr(args, 'backtest_force', False),
-                eval_window_days=getattr(args, 'backtest_days', None),
+                code=getattr(args, "backtest_code", None),
+                force=getattr(args, "backtest_force", False),
+                eval_window_days=getattr(args, "backtest_days", None),
             )
             logger.info(
                 f"回测完成: processed={stats.get('processed')} saved={stats.get('saved')} "
@@ -551,7 +464,7 @@ def main() -> int:
                 notifier=notifier,
                 analyzer=analyzer,
                 search_service=search_service,
-                send_notification=not args.no_notify
+                send_notification=not args.no_notify,
             )
             return 0
 
@@ -564,9 +477,9 @@ def main() -> int:
             # Command line arg --no-run-immediately overrides config if present.
             # Otherwise use config (defaults to True).
             should_run_immediately = config.schedule_run_immediately
-            if getattr(args, 'no_run_immediately', False):
+            if getattr(args, "no_run_immediately", False):
                 should_run_immediately = False
-            
+
             logger.info(f"启动时立即执行: {should_run_immediately}")
 
             from src.scheduler import run_with_schedule
@@ -575,9 +488,7 @@ def main() -> int:
                 run_full_analysis(config, args, stock_codes)
 
             run_with_schedule(
-                task=scheduled_task,
-                schedule_time=config.schedule_time,
-                run_immediately=should_run_immediately
+                task=scheduled_task, schedule_time=config.schedule_time, run_immediately=should_run_immediately
             )
             return 0
 

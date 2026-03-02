@@ -13,7 +13,7 @@ import json
 import logging
 from typing import Optional
 
-from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.registry import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +21,21 @@ logger = logging.getLogger(__name__)
 def _get_fetcher_manager():
     """Lazy import to avoid circular deps."""
     from data_provider import DataFetcherManager
+
     return DataFetcherManager()
 
 
 def _get_db():
     """Lazy import for DatabaseManager."""
     from src.storage import get_db
+
     return get_db()
 
 
 # ============================================================
 # get_realtime_quote
 # ============================================================
+
 
 def _handle_get_realtime_quote(stock_code: str) -> dict:
     """Get real-time stock quote."""
@@ -61,14 +64,14 @@ def _handle_get_realtime_quote(stock_code: str) -> dict:
         "total_mv": quote.total_mv,
         "circ_mv": quote.circ_mv,
         "change_60d": quote.change_60d,
-        "source": quote.source.value if hasattr(quote.source, 'value') else str(quote.source),
+        "source": quote.source.value if hasattr(quote.source, "value") else str(quote.source),
     }
 
 
 get_realtime_quote_tool = ToolDefinition(
     name="get_realtime_quote",
     description="Get real-time stock quote including price, change%, volume ratio, "
-                "turnover rate, PE, PB, market cap. Returns live market data.",
+    "turnover rate, PE, PB, market cap. Returns live market data.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -84,6 +87,7 @@ get_realtime_quote_tool = ToolDefinition(
 # ============================================================
 # get_daily_history
 # ============================================================
+
 
 def _handle_get_daily_history(stock_code: str, days: int = 60) -> dict:
     """Get daily OHLCV history data."""
@@ -111,7 +115,7 @@ def _handle_get_daily_history(stock_code: str, days: int = 60) -> dict:
 get_daily_history_tool = ToolDefinition(
     name="get_daily_history",
     description="Get daily OHLCV (open, high, low, close, volume) historical data "
-                "with MA5/MA10/MA20 indicators. Returns the last N trading days.",
+    "with MA5/MA10/MA20 indicators. Returns the last N trading days.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -134,6 +138,7 @@ get_daily_history_tool = ToolDefinition(
 # ============================================================
 # get_chip_distribution
 # ============================================================
+
 
 def _handle_get_chip_distribution(stock_code: str) -> dict:
     """Get chip distribution data."""
@@ -161,8 +166,8 @@ def _handle_get_chip_distribution(stock_code: str) -> dict:
 get_chip_distribution_tool = ToolDefinition(
     name="get_chip_distribution",
     description="Get chip distribution analysis for a stock. Returns profit ratio, "
-                "average cost, chip concentration at 90% and 70% levels. "
-                "Useful for judging support/resistance and holding structure.",
+    "average cost, chip concentration at 90% and 70% levels. "
+    "Useful for judging support/resistance and holding structure.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -178,6 +183,7 @@ get_chip_distribution_tool = ToolDefinition(
 # ============================================================
 # get_analysis_context
 # ============================================================
+
 
 def _handle_get_analysis_context(stock_code: str) -> dict:
     """Get stored analysis context from database."""
@@ -202,8 +208,8 @@ def _handle_get_analysis_context(stock_code: str) -> dict:
 get_analysis_context_tool = ToolDefinition(
     name="get_analysis_context",
     description="Get historical analysis context from the database for a stock. "
-                "Returns today's and yesterday's OHLCV data, MA alignment status, "
-                "volume and price changes. Provides the technical data foundation.",
+    "Returns today's and yesterday's OHLCV data, MA alignment status, "
+    "volume and price changes. Provides the technical data foundation.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -220,16 +226,19 @@ get_analysis_context_tool = ToolDefinition(
 # get_stock_info
 # ============================================================
 
+
 def _handle_get_stock_info(stock_code: str) -> dict:
     """Get stock fundamental information including industry, financials, and valuation."""
     # Try EfinanceFetcher.get_base_info first (most complete)
     try:
         from data_provider.efinance_fetcher import EfinanceFetcher
+
         fetcher = EfinanceFetcher()
         info = fetcher.get_base_info(stock_code)
         if info:
             # Sanitise: convert non-serialisable types and remove NaN
             import math
+
             clean: dict = {}
             for k, v in info.items():
                 if isinstance(v, float) and math.isnan(v):
@@ -237,7 +246,8 @@ def _handle_get_stock_info(stock_code: str) -> dict:
                 else:
                     try:
                         import json as _json
-                        _json.dumps(v)       # test serialisability
+
+                        _json.dumps(v)  # test serialisability
                         clean[k] = v
                     except (TypeError, ValueError):
                         clean[k] = str(v)
@@ -250,9 +260,11 @@ def _handle_get_stock_info(stock_code: str) -> dict:
                     boards = board_df.to_dict(orient="records")
                     # Keep only name + change columns to limit token usage
                     clean["belong_boards"] = [
-                        {k2: (str(v2) if not isinstance(v2, (int, float, str, type(None))) else v2)
-                         for k2, v2 in row.items()
-                         if any(kw in str(k2) for kw in ["名称", "代码", "涨跌", "板块"])}
+                        {
+                            k2: (str(v2) if not isinstance(v2, (int, float, str, type(None))) else v2)
+                            for k2, v2 in row.items()
+                            if any(kw in str(k2) for kw in ["名称", "代码", "涨跌", "板块"])
+                        }
                         for row in boards[:10]
                     ]
             except Exception:
@@ -281,8 +293,8 @@ def _handle_get_stock_info(stock_code: str) -> dict:
 get_stock_info_tool = ToolDefinition(
     name="get_stock_info",
     description="Get stock fundamental information: industry classification, ROE, net profit margin, "
-                "PE ratio, PB ratio, revenue, earnings, market cap, and sector membership. "
-                "Best for fundamental analysis and background research on a stock.",
+    "PE ratio, PB ratio, revenue, earnings, market cap, and sector membership. "
+    "Best for fundamental analysis and background research on a stock.",
     parameters=[
         ToolParameter(
             name="stock_code",

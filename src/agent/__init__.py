@@ -18,9 +18,11 @@ def __getattr__(name):
     """Lazy import to avoid triggering json_repair etc. on package access."""
     if name == "AgentExecutor":
         from src.agent.executor import AgentExecutor
+
         return AgentExecutor
     if name == "AgentResult":
         from src.agent.executor import AgentResult
+
         return AgentResult
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 

@@ -41,6 +41,7 @@ class Skill:
         enabled: Whether this strategy is currently active.
         source: Origin of this strategy — "builtin" or file path of a custom YAML.
     """
+
     name: str
     display_name: str
     description: str
@@ -84,9 +85,7 @@ def load_skill_from_yaml(filepath: Union[str, Path]) -> Skill:
     required_fields = ["name", "display_name", "description", "instructions"]
     missing = [fld for fld in required_fields if not data.get(fld)]
     if missing:
-        raise ValueError(
-            f"Strategy file {filepath.name} missing required fields: {missing}"
-        )
+        raise ValueError(f"Strategy file {filepath.name} missing required fields: {missing}")
 
     return Skill(
         name=str(data["name"]).strip(),
@@ -204,9 +203,7 @@ class SkillManager:
         for skill in skills:
             skill.source = str(directory / f"{skill.name}.yaml")
             if skill.name in self._skills:
-                logger.info(
-                    f"Custom strategy '{skill.name}' overrides built-in"
-                )
+                logger.info(f"Custom strategy '{skill.name}' overrides built-in")
             self.register(skill)
 
         logger.info(f"Loaded {len(skills)} custom strategies from {directory}")

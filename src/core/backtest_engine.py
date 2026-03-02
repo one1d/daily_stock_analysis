@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Dict, Iterable, List, Optional, Protocol, Sequence
 
-
 OVERALL_SENTINEL_CODE = "__overall__"
 
 
@@ -84,8 +83,17 @@ class BacktestEngine:
     # English patterns include trailing space in their canonical form; rstrip is
     # applied during matching so "do not" matches prefix "do not " or "do not".
     _NEGATION_PATTERNS = (
-        "not", "don't", "do not", "no", "never", "avoid",  # English
-        "不要", "不", "别", "勿", "没有",  # Chinese
+        "not",
+        "don't",
+        "do not",
+        "no",
+        "never",
+        "avoid",  # English
+        "不要",
+        "不",
+        "别",
+        "勿",
+        "没有",  # Chinese
     )
 
     @classmethod
@@ -271,9 +279,7 @@ class BacktestEngine:
         avg_simulated_return_pct = cls._average([r.simulated_return_pct for r in completed])
 
         stop_applicable = [
-            r
-            for r in completed
-            if (r.position_recommendation or "") == "long" and r.hit_stop_loss is not None
+            r for r in completed if (r.position_recommendation or "") == "long" and r.hit_stop_loss is not None
         ]
         stop_loss_trigger_rate = (
             round(sum(1 for r in stop_applicable if r.hit_stop_loss is True) / len(stop_applicable) * 100, 2)
@@ -282,9 +288,7 @@ class BacktestEngine:
         )
 
         take_profit_applicable = [
-            r
-            for r in completed
-            if (r.position_recommendation or "") == "long" and r.hit_take_profit is not None
+            r for r in completed if (r.position_recommendation or "") == "long" and r.hit_take_profit is not None
         ]
         take_profit_trigger_rate = (
             round(
@@ -315,7 +319,8 @@ class BacktestEngine:
             [
                 float(r.first_hit_trading_days)
                 for r in any_target_applicable
-                if r.first_hit_trading_days is not None and (r.first_hit or "") in ("stop_loss", "take_profit", "ambiguous")
+                if r.first_hit_trading_days is not None
+                and (r.first_hit or "") in ("stop_loss", "take_profit", "ambiguous")
             ]
         )
 

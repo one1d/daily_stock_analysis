@@ -8,15 +8,17 @@ Manages conversation sessions with TTL, storing message history and context.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from src.storage import get_db
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ConversationSession:
     """A single multi-turn conversation session."""
+
     session_id: str
     context: Dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
@@ -37,9 +39,10 @@ class ConversationSession:
         messages = get_db().get_conversation_history(self.session_id)
         return messages
 
+
 class ConversationManager:
     """Manages multiple conversation sessions with TTL."""
-    
+
     def __init__(self, ttl_minutes: int = 30):
         self._sessions: Dict[str, ConversationSession] = {}
         self.ttl = timedelta(minutes=ttl_minutes)
@@ -47,14 +50,14 @@ class ConversationManager:
     def get_or_create(self, session_id: str) -> ConversationSession:
         """Get an existing session or create a new one."""
         self._cleanup_expired()
-        
+
         if session_id not in self._sessions:
             self._sessions[session_id] = ConversationSession(session_id=session_id)
             logger.info(f"Created new conversation session: {session_id}")
         else:
             # Update last active time
             self._sessions[session_id].last_active = datetime.now()
-            
+
         return self._sessions[session_id]
 
     def add_message(self, session_id: str, role: str, content: str):
@@ -78,13 +81,11 @@ class ConversationManager:
     def _cleanup_expired(self):
         """Remove expired sessions."""
         now = datetime.now()
-        expired = [
-            sid for sid, session in self._sessions.items()
-            if now - session.last_active > self.ttl
-        ]
+        expired = [sid for sid, session in self._sessions.items() if now - session.last_active > self.ttl]
         for sid in expired:
             del self._sessions[sid]
             logger.info(f"Cleaned up expired conversation session: {sid}")
+
 
 # Global instance
 conversation_manager = ConversationManager()

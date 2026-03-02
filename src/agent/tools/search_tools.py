@@ -10,15 +10,16 @@ Tools:
 import logging
 from typing import Optional
 
-from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.registry import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
 
 def _get_search_service():
     """Lazy-init SearchService with config keys."""
-    from src.search_service import SearchService
     from src.config import get_config
+    from src.search_service import SearchService
+
     config = get_config()
     return SearchService(
         bocha_keys=config.bocha_api_keys,
@@ -66,8 +67,8 @@ def _handle_search_stock_news(stock_code: str, stock_name: str) -> dict:
 search_stock_news_tool = ToolDefinition(
     name="search_stock_news",
     description="Search for the latest news articles about a specific stock. "
-                "Requires both stock_code and stock_name for accurate search. "
-                "Returns news titles, snippets, sources, and URLs.",
+    "Requires both stock_code and stock_name for accurate search. "
+    "Returns news titles, snippets, sources, and URLs.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -88,6 +89,7 @@ search_stock_news_tool = ToolDefinition(
 # ============================================================
 # search_comprehensive_intel
 # ============================================================
+
 
 def _handle_search_comprehensive_intel(stock_code: str, stock_name: str) -> dict:
     """Multi-dimensional intelligence search."""
@@ -134,8 +136,8 @@ def _handle_search_comprehensive_intel(stock_code: str, stock_name: str) -> dict
 search_comprehensive_intel_tool = ToolDefinition(
     name="search_comprehensive_intel",
     description="Multi-dimensional intelligence search: latest news, market analysis, "
-                "risk checking, earnings outlook, and industry trends for a stock. "
-                "Returns a formatted report and structured results.",
+    "risk checking, earnings outlook, and industry trends for a stock. "
+    "Returns a formatted report and structured results.",
     parameters=[
         ToolParameter(
             name="stock_code",

@@ -48,11 +48,13 @@ _THINKING_TOOL_LABELS: Dict[str, str] = {
 # Agent result
 # ============================================================
 
+
 @dataclass
 class AgentResult:
     """Result from an agent execution run."""
+
     success: bool = False
-    content: str = ""                          # final text answer from agent
+    content: str = ""  # final text answer from agent
     dashboard: Optional[Dict[str, Any]] = None  # parsed dashboard JSON
     tool_calls_log: List[Dict[str, Any]] = field(default_factory=list)  # execution trace
     total_steps: int = 0
@@ -293,6 +295,7 @@ CHAT_SYSTEM_PROMPT = """你是一位专注于趋势交易的 A 股投资分析 A
 # Agent Executor
 # ============================================================
 
+
 class AgentExecutor:
     """ReAct agent loop with tool calling.
 
@@ -349,7 +352,13 @@ class AgentExecutor:
 
         return self._run_loop(messages, tool_decls, start_time, tool_calls_log, total_tokens, parse_dashboard=True)
 
-    def chat(self, message: str, session_id: str, progress_callback: Optional[Callable] = None, context: Optional[Dict[str, Any]] = None) -> AgentResult:
+    def chat(
+        self,
+        message: str,
+        session_id: str,
+        progress_callback: Optional[Callable] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> AgentResult:
         """Execute the agent loop for a free-form chat message.
 
         Args:
@@ -362,7 +371,7 @@ class AgentExecutor:
             AgentResult with the text response.
         """
         from src.agent.conversation import conversation_manager
-        
+
         start_time = time.time()
         tool_calls_log: List[Dict[str, Any]] = []
         total_tokens = 0
@@ -407,16 +416,28 @@ class AgentExecutor:
                 context_parts.append(f"上次分析摘要:\n{summary_text}")
             if context.get("previous_strategy"):
                 strategy = context["previous_strategy"]
-                strategy_text = json.dumps(strategy, ensure_ascii=False) if isinstance(strategy, dict) else str(strategy)
+                strategy_text = (
+                    json.dumps(strategy, ensure_ascii=False) if isinstance(strategy, dict) else str(strategy)
+                )
                 context_parts.append(f"上次策略分析:\n{strategy_text}")
             if context_parts:
                 context_msg = "[系统提供的历史分析上下文，可供参考对比]\n" + "\n".join(context_parts)
                 messages.append({"role": "user", "content": context_msg})
-                messages.append({"role": "assistant", "content": "好的，我已了解该股票的历史分析数据。请告诉我你想了解什么？"})
+                messages.append(
+                    {"role": "assistant", "content": "好的，我已了解该股票的历史分析数据。请告诉我你想了解什么？"}
+                )
 
         messages.append({"role": "user", "content": message})
 
-        result = self._run_loop(messages, tool_decls, start_time, tool_calls_log, total_tokens, parse_dashboard=False, progress_callback=progress_callback)
+        result = self._run_loop(
+            messages,
+            tool_decls,
+            start_time,
+            tool_calls_log,
+            total_tokens,
+            parse_dashboard=False,
+            progress_callback=progress_callback,
+        )
 
         # Always persist the user turn; persist assistant reply (or error note) for context continuity
         conversation_manager.add_message(session_id, "user", message)
@@ -428,7 +449,16 @@ class AgentExecutor:
 
         return result
 
-    def _run_loop(self, messages: List[Dict[str, Any]], tool_decls: Dict[str, Any], start_time: float, tool_calls_log: List[Dict[str, Any]], total_tokens: int, parse_dashboard: bool, progress_callback: Optional[Callable] = None) -> AgentResult:
+    def _run_loop(
+        self,
+        messages: List[Dict[str, Any]],
+        tool_decls: Dict[str, Any],
+        start_time: float,
+        tool_calls_log: List[Dict[str, Any]],
+        total_tokens: int,
+        parse_dashboard: bool,
+        progress_callback: Optional[Callable] = None,
+    ) -> AgentResult:
         provider_used = ""
 
         for step in range(self.max_steps):
@@ -449,16 +479,17 @@ class AgentExecutor:
 
             if response.tool_calls:
                 # LLM wants to call tools
-                logger.info(f"Agent requesting {len(response.tool_calls)} tool call(s): "
-                          f"{[tc.name for tc in response.tool_calls]}")
+                logger.info(
+                    f"Agent requesting {len(response.tool_calls)} tool call(s): "
+                    f"{[tc.name for tc in response.tool_calls]}"
+                )
 
                 # Add assistant message with tool calls to history
                 assistant_msg: Dict[str, Any] = {
                     "role": "assistant",
                     "content": response.content,
                     "tool_calls": [
-                        {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
-                        for tc in response.tool_calls
+                        {"id": tc.id, "name": tc.name, "arguments": tc.arguments} for tc in response.tool_calls
                     ],
                 }
                 messages.append(assistant_msg)
@@ -487,11 +518,25 @@ class AgentExecutor:
                         progress_callback({"type": "tool_start", "step": step + 1, "tool": tc.name})
                     _, result_str, success, tool_duration = _exec_single_tool(tc)
                     if progress_callback:
-                        progress_callback({"type": "tool_done", "step": step + 1, "tool": tc.name, "success": success, "duration": tool_duration})
-                    tool_calls_log.append({
-                        "step": step + 1, "tool": tc.name, "arguments": tc.arguments,
-                        "success": success, "duration": tool_duration, "result_length": len(result_str),
-                    })
+                        progress_callback(
+                            {
+                                "type": "tool_done",
+                                "step": step + 1,
+                                "tool": tc.name,
+                                "success": success,
+                                "duration": tool_duration,
+                            }
+                        )
+                    tool_calls_log.append(
+                        {
+                            "step": step + 1,
+                            "tool": tc.name,
+                            "arguments": tc.arguments,
+                            "success": success,
+                            "duration": tool_duration,
+                            "result_length": len(result_str),
+                        }
+                    )
                     tool_results.append({"tc": tc, "result_str": result_str})
                 else:
                     # Multiple tools — run in parallel threads
@@ -504,33 +549,50 @@ class AgentExecutor:
                         for future in as_completed(futures):
                             tc_item, result_str, success, tool_duration = future.result()
                             if progress_callback:
-                                progress_callback({"type": "tool_done", "step": step + 1, "tool": tc_item.name, "success": success, "duration": tool_duration})
-                            tool_calls_log.append({
-                                "step": step + 1, "tool": tc_item.name, "arguments": tc_item.arguments,
-                                "success": success, "duration": tool_duration, "result_length": len(result_str),
-                            })
+                                progress_callback(
+                                    {
+                                        "type": "tool_done",
+                                        "step": step + 1,
+                                        "tool": tc_item.name,
+                                        "success": success,
+                                        "duration": tool_duration,
+                                    }
+                                )
+                            tool_calls_log.append(
+                                {
+                                    "step": step + 1,
+                                    "tool": tc_item.name,
+                                    "arguments": tc_item.arguments,
+                                    "success": success,
+                                    "duration": tool_duration,
+                                    "result_length": len(result_str),
+                                }
+                            )
                             tool_results.append({"tc": tc_item, "result_str": result_str})
 
                 # Append tool results to messages (ordered by original tool_calls order)
                 tc_order = {tc.id: i for i, tc in enumerate(response.tool_calls)}
                 tool_results.sort(key=lambda x: tc_order.get(x["tc"].id, 0))
                 for tr in tool_results:
-                    messages.append({
-                        "role": "tool",
-                        "name": tr["tc"].name,
-                        "tool_call_id": tr["tc"].id,
-                        "content": tr["result_str"],
-                    })
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "name": tr["tc"].name,
+                            "tool_call_id": tr["tc"].id,
+                            "content": tr["result_str"],
+                        }
+                    )
 
             else:
                 # LLM returned text — this is the final answer
-                logger.info(f"Agent completed in {step + 1} steps "
-                          f"({time.time() - start_time:.1f}s, {total_tokens} tokens)")
+                logger.info(
+                    f"Agent completed in {step + 1} steps " f"({time.time() - start_time:.1f}s, {total_tokens} tokens)"
+                )
                 if progress_callback:
                     progress_callback({"type": "generating", "step": step + 1, "message": "正在生成最终分析..."})
 
                 final_content = response.content or ""
-                
+
                 if parse_dashboard:
                     dashboard = self._parse_dashboard(final_content)
                     return AgentResult(
@@ -586,13 +648,15 @@ class AgentExecutor:
                 parts.append(f"\n股票代码: {context['stock_code']}")
             if context.get("report_type"):
                 parts.append(f"报告类型: {context['report_type']}")
-            
+
             # 注入已有的上下文数据，避免重复获取
             if context.get("realtime_quote"):
                 parts.append(f"\n[系统已获取的实时行情]\n{json.dumps(context['realtime_quote'], ensure_ascii=False)}")
             if context.get("chip_distribution"):
-                parts.append(f"\n[系统已获取的筹码分布]\n{json.dumps(context['chip_distribution'], ensure_ascii=False)}")
-                
+                parts.append(
+                    f"\n[系统已获取的筹码分布]\n{json.dumps(context['chip_distribution'], ensure_ascii=False)}"
+                )
+
         parts.append("\n请使用可用工具获取缺失的数据（如历史K线、新闻等），然后以决策仪表盘 JSON 格式输出分析结果。")
         return "\n".join(parts)
 
@@ -608,9 +672,9 @@ class AgentExecutor:
             except (TypeError, ValueError):
                 return str(result)
         # Dataclass or object with __dict__
-        if hasattr(result, '__dict__'):
+        if hasattr(result, "__dict__"):
             try:
-                d = {k: v for k, v in result.__dict__.items() if not k.startswith('_')}
+                d = {k: v for k, v in result.__dict__.items() if not k.startswith("_")}
                 return json.dumps(d, ensure_ascii=False, default=str)
             except (TypeError, ValueError):
                 return str(result)
@@ -622,7 +686,7 @@ class AgentExecutor:
             return None
 
         # Try to extract JSON from markdown code blocks
-        json_blocks = re.findall(r'```(?:json)?\s*\n?(.*?)\n?```', content, re.DOTALL)
+        json_blocks = re.findall(r"```(?:json)?\s*\n?(.*?)\n?```", content, re.DOTALL)
         if json_blocks:
             for block in json_blocks:
                 try:
@@ -656,10 +720,10 @@ class AgentExecutor:
             pass
 
         # Try to find JSON object in text
-        brace_start = content.find('{')
-        brace_end = content.rfind('}')
+        brace_start = content.find("{")
+        brace_end = content.rfind("}")
         if brace_start >= 0 and brace_end > brace_start:
-            candidate = content[brace_start:brace_end + 1]
+            candidate = content[brace_start : brace_end + 1]
             try:
                 parsed = json.loads(candidate)
                 if isinstance(parsed, dict):

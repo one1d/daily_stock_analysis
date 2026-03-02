@@ -38,11 +38,7 @@ class ConfigManager:
             return {}
 
         values = dotenv_values(self._env_path)
-        return {
-            str(key): "" if value is None else str(value)
-            for key, value in values.items()
-            if key is not None
-        }
+        return {str(key): "" if value is None else str(value) for key, value in values.items() if key is not None}
 
     def get_config_version(self) -> str:
         """Return deterministic version string based on file state."""

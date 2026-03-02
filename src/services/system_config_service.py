@@ -51,14 +51,10 @@ class SystemConfigService:
         registered_keys = set(get_registered_field_keys())
         all_keys = set(config_map.keys()) | registered_keys
 
-        category_orders = {
-            item["category"]: item["display_order"]
-            for item in get_category_definitions()
-        }
+        category_orders = {item["category"]: item["display_order"] for item in get_category_definitions()}
 
         schema_by_key: Dict[str, Dict[str, Any]] = {
-            key: get_field_definition(key, config_map.get(key, ""))
-            for key in all_keys
+            key: get_field_definition(key, config_map.get(key, "")) for key in all_keys
         }
 
         items: List[Dict[str, Any]] = []
@@ -313,8 +309,10 @@ class SystemConfigService:
 
         token_value = (effective_map.get("TELEGRAM_BOT_TOKEN") or "").strip()
         chat_id_value = (effective_map.get("TELEGRAM_CHAT_ID") or "").strip()
-        if token_value and not chat_id_value and (
-            "TELEGRAM_BOT_TOKEN" in updated_keys or "TELEGRAM_CHAT_ID" in updated_keys
+        if (
+            token_value
+            and not chat_id_value
+            and ("TELEGRAM_BOT_TOKEN" in updated_keys or "TELEGRAM_CHAT_ID" in updated_keys)
         ):
             issues.append(
                 {

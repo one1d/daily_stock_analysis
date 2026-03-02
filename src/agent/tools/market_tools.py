@@ -9,7 +9,7 @@ Tools:
 
 import logging
 
-from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.registry import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +17,14 @@ logger = logging.getLogger(__name__)
 def _get_fetcher_manager():
     """Lazy import to avoid circular deps."""
     from data_provider import DataFetcherManager
+
     return DataFetcherManager()
 
 
 # ============================================================
 # get_market_indices
 # ============================================================
+
 
 def _handle_get_market_indices(region: str = "cn") -> dict:
     """Get major market indices."""
@@ -42,7 +44,7 @@ def _handle_get_market_indices(region: str = "cn") -> dict:
 get_market_indices_tool = ToolDefinition(
     name="get_market_indices",
     description="Get major market indices (e.g., Shanghai Composite, Shenzhen Component, "
-                "CSI 300 for China; S&P 500, Nasdaq, Dow for US). Provides market overview.",
+    "CSI 300 for China; S&P 500, Nasdaq, Dow for US). Provides market overview.",
     parameters=[
         ToolParameter(
             name="region",
@@ -61,6 +63,7 @@ get_market_indices_tool = ToolDefinition(
 # ============================================================
 # get_sector_rankings
 # ============================================================
+
 
 def _handle_get_sector_rankings(top_n: int = 10) -> dict:
     """Get sector performance rankings."""
@@ -87,7 +90,7 @@ def _handle_get_sector_rankings(top_n: int = 10) -> dict:
 get_sector_rankings_tool = ToolDefinition(
     name="get_sector_rankings",
     description="Get sector/industry performance rankings. Returns top N and bottom N "
-                "sectors by daily change percentage. Useful for sector rotation analysis.",
+    "sectors by daily change percentage. Useful for sector rotation analysis.",
     parameters=[
         ToolParameter(
             name="top_n",

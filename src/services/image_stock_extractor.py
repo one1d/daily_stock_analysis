@@ -144,7 +144,7 @@ def _call_gemini(image_b64: str, mime_type: str) -> str:
     genai.configure(api_key=cfg.gemini_api_key)
     # 使用支持图像的模型（gemini-1.5-flash / gemini-2.0-flash）
     # Ensure non-empty model name (cfg.gemini_model can be "")
-    model_name = (getattr(cfg, "gemini_model", "gemini-2.0-flash") or "gemini-2.0-flash")
+    model_name = getattr(cfg, "gemini_model", "gemini-2.0-flash") or "gemini-2.0-flash"
     if "gemini-3" in (model_name or ""):
         model_name = "gemini-2.0-flash"
     model = genai.GenerativeModel(model_name)
@@ -258,9 +258,7 @@ def extract_stock_codes_from_image(
 
     provider = _select_vision_provider()
     if not provider:
-        raise ValueError(
-            "未配置 Vision API。请设置 GEMINI_API_KEY、ANTHROPIC_API_KEY 或 OPENAI_API_KEY。"
-        )
+        raise ValueError("未配置 Vision API。请设置 GEMINI_API_KEY、ANTHROPIC_API_KEY 或 OPENAI_API_KEY。")
 
     image_b64 = base64.b64encode(image_bytes).decode("ascii")
 
@@ -290,8 +288,7 @@ def extract_stock_codes_from_image(
                 continue
             codes = _parse_codes_from_text(raw)
             logger.info(
-                f"[ImageExtractor] {p} 提取 {len(codes)} 个代码: "
-                f"{codes[:10]}{'...' if len(codes) > 10 else ''}"
+                f"[ImageExtractor] {p} 提取 {len(codes)} 个代码: " f"{codes[:10]}{'...' if len(codes) > 10 else ''}"
             )
             return codes, raw
         except Exception as e:
@@ -299,6 +296,4 @@ def extract_stock_codes_from_image(
             logger.warning(f"[ImageExtractor] {p} 调用失败: {e}")
             continue
 
-    raise ValueError(
-        "所有 Vision API 均调用失败，请检查 API Key 与网络。"
-    ) from last_err
+    raise ValueError("所有 Vision API 均调用失败，请检查 API Key 与网络。") from last_err

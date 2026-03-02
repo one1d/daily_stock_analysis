@@ -18,11 +18,11 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Optional, Dict, Any, List, Union
+from typing import Any, Dict, List, Optional, Union
 
+from bot.models import BotMessage
 from src.enums import ReportType
 from src.storage import get_db
-from bot.models import BotMessage
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class TaskService:
     3. 触发通知推送
     """
 
-    _instance: Optional['TaskService'] = None
+    _instance: Optional["TaskService"] = None
     _lock = threading.Lock()
 
     def __init__(self, max_workers: int = 3):
@@ -47,7 +47,7 @@ class TaskService:
         self._tasks_lock = threading.Lock()
 
     @classmethod
-    def get_instance(cls) -> 'TaskService':
+    def get_instance(cls) -> "TaskService":
         """获取单例实例"""
         if cls._instance is None:
             with cls._lock:
@@ -59,10 +59,7 @@ class TaskService:
     def executor(self) -> ThreadPoolExecutor:
         """获取或创建线程池"""
         if self._executor is None:
-            self._executor = ThreadPoolExecutor(
-                max_workers=self._max_workers,
-                thread_name_prefix="analysis_"
-            )
+            self._executor = ThreadPoolExecutor(max_workers=self._max_workers, thread_name_prefix="analysis_")
         return self._executor
 
     def submit_analysis(
@@ -71,7 +68,7 @@ class TaskService:
         report_type: Union[ReportType, str] = ReportType.SIMPLE,
         source_message: Optional[BotMessage] = None,
         save_context_snapshot: Optional[bool] = None,
-        query_source: str = "bot"
+        query_source: str = "bot",
     ) -> Dict[str, Any]:
         """
         提交异步分析任务
@@ -94,13 +91,7 @@ class TaskService:
 
         # 提交到线程池
         self.executor.submit(
-            self._run_analysis,
-            code,
-            task_id,
-            report_type,
-            source_message,
-            save_context_snapshot,
-            query_source
+            self._run_analysis, code, task_id, report_type, source_message, save_context_snapshot, query_source
         )
 
         logger.info(f"[TaskService] 已提交股票 {code} 的分析任务, task_id={task_id}, report_type={report_type.value}")
@@ -110,7 +101,7 @@ class TaskService:
             "message": "分析任务已提交，将异步执行并推送通知",
             "code": code,
             "task_id": task_id,
-            "report_type": report_type.value
+            "report_type": report_type.value,
         }
 
     def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -123,15 +114,11 @@ class TaskService:
         with self._tasks_lock:
             tasks = list(self._tasks.values())
         # 按开始时间倒序
-        tasks.sort(key=lambda x: x.get('start_time', ''), reverse=True)
+        tasks.sort(key=lambda x: x.get("start_time", ""), reverse=True)
         return tasks[:limit]
 
     def get_analysis_history(
-        self,
-        code: Optional[str] = None,
-        query_id: Optional[str] = None,
-        days: int = 30,
-        limit: int = 50
+        self, code: Optional[str] = None, query_id: Optional[str] = None, days: int = 30, limit: int = 50
     ) -> List[Dict[str, Any]]:
         """获取分析历史记录"""
         db = get_db()
@@ -145,7 +132,7 @@ class TaskService:
         report_type: ReportType = ReportType.SIMPLE,
         source_message: Optional[BotMessage] = None,
         save_context_snapshot: Optional[bool] = None,
-        query_source: str = "bot"
+        query_source: str = "bot",
     ) -> Dict[str, Any]:
         """
         执行单只股票分析
@@ -161,13 +148,13 @@ class TaskService:
                 "start_time": datetime.now().isoformat(),
                 "result": None,
                 "error": None,
-                "report_type": report_type.value
+                "report_type": report_type.value,
             }
 
         try:
             # 延迟导入避免循环依赖
-            from src.config import get_config
             from main import StockAnalysisPipeline
+            from src.config import get_config
 
             logger.info(f"[TaskService] 开始分析股票: {code}")
 
@@ -179,15 +166,12 @@ class TaskService:
                 source_message=source_message,
                 query_id=task_id,
                 query_source=query_source,
-                save_context_snapshot=save_context_snapshot
+                save_context_snapshot=save_context_snapshot,
             )
 
             # 执行单只股票分析（启用单股推送）
             result = pipeline.process_single_stock(
-                code=code,
-                skip_analysis=False,
-                single_stock_notify=True,
-                report_type=report_type
+                code=code, skip_analysis=False, single_stock_notify=True, report_type=report_type
             )
 
             if result:
@@ -201,21 +185,17 @@ class TaskService:
                 }
 
                 with self._tasks_lock:
-                    self._tasks[task_id].update({
-                        "status": "completed",
-                        "end_time": datetime.now().isoformat(),
-                        "result": result_data
-                    })
+                    self._tasks[task_id].update(
+                        {"status": "completed", "end_time": datetime.now().isoformat(), "result": result_data}
+                    )
 
                 logger.info(f"[TaskService] 股票 {code} 分析完成: {result.operation_advice}")
                 return {"success": True, "task_id": task_id, "result": result_data}
             else:
                 with self._tasks_lock:
-                    self._tasks[task_id].update({
-                        "status": "failed",
-                        "end_time": datetime.now().isoformat(),
-                        "error": "分析返回空结果"
-                    })
+                    self._tasks[task_id].update(
+                        {"status": "failed", "end_time": datetime.now().isoformat(), "error": "分析返回空结果"}
+                    )
 
                 logger.warning(f"[TaskService] 股票 {code} 分析失败: 返回空结果")
                 return {"success": False, "task_id": task_id, "error": "分析返回空结果"}
@@ -225,11 +205,9 @@ class TaskService:
             logger.error(f"[TaskService] 股票 {code} 分析异常: {error_msg}")
 
             with self._tasks_lock:
-                self._tasks[task_id].update({
-                    "status": "failed",
-                    "end_time": datetime.now().isoformat(),
-                    "error": error_msg
-                })
+                self._tasks[task_id].update(
+                    {"status": "failed", "end_time": datetime.now().isoformat(), "error": error_msg}
+                )
 
             return {"success": False, "task_id": task_id, "error": error_msg}
 
@@ -237,6 +215,7 @@ class TaskService:
 # ============================================================
 # 便捷函数
 # ============================================================
+
 
 def get_task_service() -> TaskService:
     """获取任务服务单例"""

@@ -8,8 +8,8 @@ Provides:
 - @tool decorator for easy tool registration
 """
 
-import json
 import inspect
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
@@ -21,9 +21,11 @@ logger = logging.getLogger(__name__)
 # Data classes
 # ============================================================
 
+
 @dataclass
 class ToolParameter:
     """Schema for a single tool parameter."""
+
     name: str
     type: str  # "string" | "number" | "integer" | "boolean" | "array" | "object"
     description: str
@@ -35,6 +37,7 @@ class ToolParameter:
 @dataclass
 class ToolDefinition:
     """Complete definition of an agent-callable tool."""
+
     name: str
     description: str
     parameters: List[ToolParameter]
@@ -124,6 +127,7 @@ class ToolDefinition:
 # ============================================================
 # Tool Registry
 # ============================================================
+
 
 class ToolRegistry:
     """Central registry for all agent-callable tools.
@@ -238,6 +242,7 @@ def tool(
         def get_realtime_quote(stock_code: str) -> dict:
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         # Infer parameters from type hints if not provided
         params = parameters
@@ -265,7 +270,7 @@ def tool(
 def _infer_parameters(func: Callable) -> List[ToolParameter]:
     """Infer ToolParameter list from function signature and type hints."""
     sig = inspect.signature(func)
-    hints = getattr(func, '__annotations__', {})
+    hints = getattr(func, "__annotations__", {})
     params: List[ToolParameter] = []
 
     type_map = {
@@ -283,11 +288,11 @@ def _infer_parameters(func: Callable) -> List[ToolParameter]:
         # Skip return annotation
         hint = hints.get(param_name, str)
         # Handle Optional and other typing constructs
-        origin = getattr(hint, '__origin__', None)
+        origin = getattr(hint, "__origin__", None)
         if origin is not None:
             # Optional[X] -> X, List[X] -> array, etc.
-            args = getattr(hint, '__args__', ())
-            if origin is list or (hasattr(origin, '__name__') and origin.__name__ == 'List'):
+            args = getattr(hint, "__args__", ())
+            if origin is list or (hasattr(origin, "__name__") and origin.__name__ == "List"):
                 param_type = "array"
             elif origin is dict:
                 param_type = "object"

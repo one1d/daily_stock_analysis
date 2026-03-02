@@ -56,18 +56,20 @@ def get_tool_registry():
     if _TOOL_REGISTRY is not None:
         return _TOOL_REGISTRY
 
-    from src.agent.tools.registry import ToolRegistry
-    from src.agent.tools.data_tools import ALL_DATA_TOOLS
     from src.agent.tools.analysis_tools import ALL_ANALYSIS_TOOLS
-    from src.agent.tools.search_tools import ALL_SEARCH_TOOLS
+    from src.agent.tools.data_tools import ALL_DATA_TOOLS
     from src.agent.tools.market_tools import ALL_MARKET_TOOLS
+    from src.agent.tools.registry import ToolRegistry
+    from src.agent.tools.search_tools import ALL_SEARCH_TOOLS
 
     registry = ToolRegistry()
     for tool_fn in ALL_DATA_TOOLS + ALL_ANALYSIS_TOOLS + ALL_SEARCH_TOOLS + ALL_MARKET_TOOLS:
         registry.register(tool_fn)
 
     _TOOL_REGISTRY = registry
-    logger.info("[AgentFactory] ToolRegistry cached (%d tools)", len(registry._tools) if hasattr(registry, "_tools") else -1)
+    logger.info(
+        "[AgentFactory] ToolRegistry cached (%d tools)", len(registry._tools) if hasattr(registry, "_tools") else -1
+    )
     return _TOOL_REGISTRY
 
 
@@ -86,6 +88,7 @@ def get_skill_manager(config=None):
 
     if config is None:
         from src.config import get_config
+
         config = get_config()
 
     current_custom_dir = getattr(config, "agent_strategy_dir", None)
@@ -95,8 +98,11 @@ def get_skill_manager(config=None):
     from src.agent.skills.base import SkillManager
 
     if _SKILL_MANAGER_PROTOTYPE is not None:
-        logger.info("[AgentFactory] SkillManager prototype invalidated (agent_strategy_dir changed: %r → %r)",
-                    _SKILL_MANAGER_CUSTOM_DIR, current_custom_dir)
+        logger.info(
+            "[AgentFactory] SkillManager prototype invalidated (agent_strategy_dir changed: %r → %r)",
+            _SKILL_MANAGER_CUSTOM_DIR,
+            current_custom_dir,
+        )
 
     skill_manager = SkillManager()
     skill_manager.load_builtin_strategies()
@@ -128,6 +134,7 @@ def build_agent_executor(config=None, skills: Optional[List[str]] = None):
     """
     if config is None:
         from src.config import get_config
+
         config = get_config()
 
     from src.agent.executor import AgentExecutor
@@ -136,7 +143,9 @@ def build_agent_executor(config=None, skills: Optional[List[str]] = None):
     registry = get_tool_registry()
     skill_manager = get_skill_manager(config)
 
-    skills_to_activate = skills if skills is not None else (getattr(config, "agent_skills", None) or DEFAULT_AGENT_SKILLS)
+    skills_to_activate = (
+        skills if skills is not None else (getattr(config, "agent_skills", None) or DEFAULT_AGENT_SKILLS)
+    )
     skill_manager.activate(skills_to_activate if skills_to_activate else ["all"])
     logger.info("[AgentFactory] Activated strategies: %s", skills_to_activate)
 

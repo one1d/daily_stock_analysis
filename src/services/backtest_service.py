@@ -92,7 +92,9 @@ class BacktestService:
                 start_daily = self.stock_repo.get_start_daily(code=analysis.code, analysis_date=analysis_date)
 
                 if start_daily is None or start_daily.close is None:
-                    self._try_fill_daily_data(code=analysis.code, analysis_date=analysis_date, eval_window_days=eval_window_days)
+                    self._try_fill_daily_data(
+                        code=analysis.code, analysis_date=analysis_date, eval_window_days=eval_window_days
+                    )
                     start_daily = self.stock_repo.get_start_daily(code=analysis.code, analysis_date=analysis_date)
 
                 if start_daily is None or start_daily.close is None:
@@ -118,7 +120,9 @@ class BacktestService:
                 )
 
                 if len(forward_bars) < int(eval_window_days):
-                    self._try_fill_daily_data(code=analysis.code, analysis_date=start_daily.date, eval_window_days=eval_window_days)
+                    self._try_fill_daily_data(
+                        code=analysis.code, analysis_date=start_daily.date, eval_window_days=eval_window_days
+                    )
                     forward_bars = self.stock_repo.get_forward_bars(
                         code=analysis.code,
                         analysis_date=start_daily.date,
@@ -211,13 +215,19 @@ class BacktestService:
             "errors": errors,
         }
 
-    def get_recent_evaluations(self, *, code: Optional[str], eval_window_days: Optional[int] = None, limit: int = 50, page: int = 1) -> Dict[str, Any]:
+    def get_recent_evaluations(
+        self, *, code: Optional[str], eval_window_days: Optional[int] = None, limit: int = 50, page: int = 1
+    ) -> Dict[str, Any]:
         offset = max(page - 1, 0) * limit
-        rows, total = self.repo.get_results_paginated(code=code, eval_window_days=eval_window_days, days=None, offset=offset, limit=limit)
+        rows, total = self.repo.get_results_paginated(
+            code=code, eval_window_days=eval_window_days, days=None, offset=offset, limit=limit
+        )
         items = [self._result_to_dict(r) for r in rows]
         return {"total": total, "page": page, "limit": limit, "items": items}
 
-    def get_summary(self, *, scope: str, code: Optional[str], eval_window_days: Optional[int] = None) -> Optional[Dict[str, Any]]:
+    def get_summary(
+        self, *, scope: str, code: Optional[str], eval_window_days: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
         config = get_config()
         engine_version = str(getattr(config, "backtest_engine_version", "v1"))
         lookup_code = OVERALL_SENTINEL_CODE if scope == "overall" else code
@@ -262,14 +272,18 @@ class BacktestService:
     def _recompute_summaries(self, *, touched_codes: List[str], eval_window_days: int, engine_version: str) -> None:
         with self.db.get_session() as session:
             # overall
-            overall_rows = session.execute(
-                select(BacktestResult).where(
-                    and_(
-                        BacktestResult.eval_window_days == eval_window_days,
-                        BacktestResult.engine_version == engine_version,
+            overall_rows = (
+                session.execute(
+                    select(BacktestResult).where(
+                        and_(
+                            BacktestResult.eval_window_days == eval_window_days,
+                            BacktestResult.engine_version == engine_version,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             overall_data = BacktestEngine.compute_summary(
                 results=overall_rows,
                 scope="overall",
@@ -281,15 +295,19 @@ class BacktestService:
             self.repo.upsert_summary(overall_summary)
 
             for code in touched_codes:
-                rows = session.execute(
-                    select(BacktestResult).where(
-                        and_(
-                            BacktestResult.code == code,
-                            BacktestResult.eval_window_days == eval_window_days,
-                            BacktestResult.engine_version == engine_version,
+                rows = (
+                    session.execute(
+                        select(BacktestResult).where(
+                            and_(
+                                BacktestResult.code == code,
+                                BacktestResult.eval_window_days == eval_window_days,
+                                BacktestResult.engine_version == engine_version,
+                            )
                         )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 data = BacktestEngine.compute_summary(
                     results=rows,
                     scope="stock",

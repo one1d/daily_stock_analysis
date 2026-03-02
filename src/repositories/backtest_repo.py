@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple
 
 from sqlalchemy import and_, delete, desc, func, select
 
-from src.storage import BacktestResult, BacktestSummary, DatabaseManager, AnalysisHistory
+from src.storage import AnalysisHistory, BacktestResult, BacktestSummary, DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -114,13 +114,17 @@ class BacktestRepository:
             where_clause = and_(*conditions) if conditions else True
 
             total = session.execute(select(func.count(BacktestResult.id)).where(where_clause)).scalar() or 0
-            rows = session.execute(
-                select(BacktestResult)
-                .where(where_clause)
-                .order_by(desc(BacktestResult.evaluated_at))
-                .offset(offset)
-                .limit(limit)
-            ).scalars().all()
+            rows = (
+                session.execute(
+                    select(BacktestResult)
+                    .where(where_clause)
+                    .order_by(desc(BacktestResult.evaluated_at))
+                    .offset(offset)
+                    .limit(limit)
+                )
+                .scalars()
+                .all()
+            )
             return list(rows), int(total)
 
     def upsert_summary(self, summary: BacktestSummary) -> None:
@@ -187,10 +191,7 @@ class BacktestRepository:
                 conditions.append(BacktestSummary.eval_window_days == eval_window_days)
 
             row = session.execute(
-                select(BacktestSummary)
-                .where(and_(*conditions))
-                .order_by(desc(BacktestSummary.computed_at))
-                .limit(1)
+                select(BacktestSummary).where(and_(*conditions)).order_by(desc(BacktestSummary.computed_at)).limit(1)
             ).scalar_one_or_none()
             return row
 
