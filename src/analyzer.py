@@ -628,7 +628,7 @@ class GeminiAnalyzer:
             # 依赖缺失（如 socksio）
             if "socksio" in str(e).lower() or "socks" in str(e).lower():
                 logger.error(
-                    f"OpenAI 客户端需要 SOCKS 代理支持，请运行: pip install httpx[socks] 或 pip install socksio"
+                    "OpenAI 客户端需要 SOCKS 代理支持，请运行: pip install httpx[socks] 或 pip install socksio"
                 )
             else:
                 logger.error(f"OpenAI 依赖缺失: {e}")
@@ -1475,7 +1475,7 @@ class GeminiAnalyzer:
                 )
             else:
                 # 没有找到 JSON，尝试从纯文本中提取信息
-                logger.warning(f"无法从响应中提取 JSON，使用原始文本分析")
+                logger.warning("无法从响应中提取 JSON，使用原始文本分析")
                 return self._parse_text_response(response_text, code, name)
 
         except json.JSONDecodeError as e:

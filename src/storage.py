@@ -1209,7 +1209,7 @@ if __name__ == "__main__":
     db = get_db()
 
     print("=== 数据库测试 ===")
-    print(f"数据库初始化成功")
+    print("数据库初始化成功")
 
     # 测试检查今日数据
     has_data = db.has_today_data("600519")

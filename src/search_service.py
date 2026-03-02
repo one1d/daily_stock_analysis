@@ -1372,7 +1372,7 @@ class SearchService:
                 success=True,
             )
         else:
-            logger.warning(f"[增强搜索] 所有搜索均未返回结果")
+            logger.warning("[增强搜索] 所有搜索均未返回结果")
             return SearchResponse(
                 query=f"{stock_name}({stock_code}) 股价走势",
                 results=[],

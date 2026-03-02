@@ -710,7 +710,7 @@ if __name__ == "__main__":
 
     # 测试获取市场概览
     overview = analyzer.get_market_overview()
-    print(f"\n=== 市场概览 ===")
+    print("\n=== 市场概览 ===")
     print(f"日期: {overview.date}")
     print(f"指数数量: {len(overview.indices)}")
     for idx in overview.indices:
@@ -720,5 +720,5 @@ if __name__ == "__main__":
 
     # 测试生成模板报告
     report = analyzer._generate_template_review(overview, [])
-    print(f"\n=== 复盘报告 ===")
+    print("\n=== 复盘报告 ===")
     print(report)

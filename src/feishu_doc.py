@@ -96,7 +96,7 @@ class FeishuDocManager:
                 if not write_resp.success():
                     logger.error(f"写入文档内容失败(批次{i}): {write_resp.code} - {write_resp.msg}")
 
-            logger.info(f"文档内容写入完成")
+            logger.info("文档内容写入完成")
             return doc_url
 
         except Exception as e:
