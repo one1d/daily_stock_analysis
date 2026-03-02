@@ -9,7 +9,7 @@ Tools:
 import logging
 from typing import Optional
 
-from src.agent.tools.registry import ToolParameter, ToolDefinition
+from src.agent.tools.registry import ToolDefinition, ToolParameter
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ def _handle_analyze_trend(stock_code: str) -> dict:
         return {"error": f"Insufficient data for trend analysis on {stock_code} (need >= 5 days)"}
 
     import pandas as pd
+
     df = pd.DataFrame(raw_data)
 
     result = analyzer.analyze(df, stock_code)
@@ -76,9 +77,9 @@ def _handle_analyze_trend(stock_code: str) -> dict:
 analyze_trend_tool = ToolDefinition(
     name="analyze_trend",
     description="Run comprehensive technical trend analysis on a stock. "
-                "Returns MA alignment, bias rates, MACD status, RSI levels, "
-                "volume analysis, support/resistance levels, and a buy/sell signal "
-                "with a score (0-100). Requires historical data in the database.",
+    "Returns MA alignment, bias rates, MACD status, RSI levels, "
+    "volume analysis, support/resistance levels, and a buy/sell signal "
+    "with a score (0-100). Requires historical data in the database.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -95,10 +96,12 @@ analyze_trend_tool = ToolDefinition(
 # calculate_ma — flexible moving average calculator
 # ============================================================
 
+
 def _handle_calculate_ma(stock_code: str, periods: Optional[str] = None, days: int = 120) -> dict:
     """Calculate moving averages for arbitrary periods from historical K-line data."""
-    from data_provider import DataFetcherManager
     import pandas as pd
+
+    from data_provider import DataFetcherManager
 
     manager = DataFetcherManager()
     df, source = manager.get_daily_data(stock_code, days=days)
@@ -145,9 +148,9 @@ def _handle_calculate_ma(stock_code: str, periods: Optional[str] = None, days: i
     result["above_ma_count"] = above_count
     result["total_ma_count"] = len(ma_values)
     result["ma_alignment"] = (
-        "多头排列" if above_count == len(ma_values)
-        else "空头排列" if above_count == 0
-        else f"混合({above_count}/{len(ma_values)}条均线上方)"
+        "多头排列"
+        if above_count == len(ma_values)
+        else "空头排列" if above_count == 0 else f"混合({above_count}/{len(ma_values)}条均线上方)"
     )
     return result
 
@@ -155,8 +158,8 @@ def _handle_calculate_ma(stock_code: str, periods: Optional[str] = None, days: i
 calculate_ma_tool = ToolDefinition(
     name="calculate_ma",
     description="Calculate moving averages (MA5/10/20/30/60/120/250 or custom periods) "
-                "for a stock. Returns each MA value, price bias %, and whether price "
-                "is above each MA. Also returns overall MA alignment (多头/空头/混合).",
+    "for a stock. Returns each MA value, price bias %, and whether price "
+    "is above each MA. Also returns overall MA alignment (多头/空头/混合).",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -167,7 +170,7 @@ calculate_ma_tool = ToolDefinition(
             name="periods",
             type="string",
             description="Comma-separated MA periods to calculate (default: '5,10,20,30,60,120,250'). "
-                        "E.g., '5,10,20,60'",
+            "E.g., '5,10,20,60'",
             required=False,
             default="5,10,20,30,60,120,250",
         ),
@@ -188,10 +191,12 @@ calculate_ma_tool = ToolDefinition(
 # get_volume_analysis — volume-price relationship analysis
 # ============================================================
 
+
 def _handle_get_volume_analysis(stock_code: str, days: int = 30) -> dict:
     """Analyse volume-price patterns over recent trading days."""
-    from data_provider import DataFetcherManager
     import pandas as pd
+
+    from data_provider import DataFetcherManager
 
     manager = DataFetcherManager()
     df, source = manager.get_daily_data(stock_code, days=max(days + 20, 60))
@@ -220,6 +225,7 @@ def _handle_get_volume_analysis(stock_code: str, days: int = 30) -> dict:
     # Volume-price correlation (last N days)
     try:
         import numpy as np
+
         vp_corr = float(pd.Series(volume.values, dtype=float).corr(pd.Series(close.values, dtype=float)))
         vp_corr = round(vp_corr, 3)
     except Exception:
@@ -279,9 +285,9 @@ def _handle_get_volume_analysis(stock_code: str, days: int = 30) -> dict:
 get_volume_analysis_tool = ToolDefinition(
     name="get_volume_analysis",
     description="Analyse volume-price relationship for a stock. Returns volume ratios, "
-                "average volume on up vs down days, volume trend (expanding/shrinking), "
-                "and pattern interpretation (量价配合/背离). Useful for confirming trend "
-                "strength and detecting distribution or accumulation phases.",
+    "average volume on up vs down days, volume trend (expanding/shrinking), "
+    "and pattern interpretation (量价配合/背离). Useful for confirming trend "
+    "strength and detecting distribution or accumulation phases.",
     parameters=[
         ToolParameter(
             name="stock_code",
@@ -305,10 +311,12 @@ get_volume_analysis_tool = ToolDefinition(
 # analyze_pattern — candlestick / chart pattern recognition
 # ============================================================
 
+
 def _handle_analyze_pattern(stock_code: str, days: int = 60) -> dict:
     """Detect common candlestick and chart patterns in recent price history."""
-    from data_provider import DataFetcherManager
     import pandas as pd
+
+    from data_provider import DataFetcherManager
 
     manager = DataFetcherManager()
     df, source = manager.get_daily_data(stock_code, days=max(days, 120))
@@ -322,7 +330,7 @@ def _handle_analyze_pattern(stock_code: str, days: int = 60) -> dict:
 
     o = df["open"].values
     h = df["high"].values
-    l = df["low"].values   # noqa: E741
+    l = df["low"].values  # noqa: E741
     c = df["close"].values
     v = df["volume"].values if "volume" in df.columns else None
 
@@ -355,76 +363,112 @@ def _handle_analyze_pattern(stock_code: str, days: int = 60) -> dict:
 
         # Doji
         if bd < avg_body * 0.1 and (us + ls) > bd * 3:
-            patterns_detected.append({
-                "pattern": "十字星 (Doji)", "type": "reversal_signal",
-                "day_offset": -(n - 1 - i),
-                "strength": "弱", "desc": "多空平衡，可能变盘信号"
-            })
+            patterns_detected.append(
+                {
+                    "pattern": "十字星 (Doji)",
+                    "type": "reversal_signal",
+                    "day_offset": -(n - 1 - i),
+                    "strength": "弱",
+                    "desc": "多空平衡，可能变盘信号",
+                }
+            )
 
         # Hammer / Hanging Man
         if ls > body(i) * 2 and us < body(i) * 0.5:
             label = "锤子线 (Hammer)" if i == 0 or c[i] >= c[i - 1] else "上吊线 (Hanging Man)"
-            patterns_detected.append({
-                "pattern": label, "type": "reversal_signal",
-                "day_offset": -(n - 1 - i),
-                "strength": "中", "desc": "下影线长，潜在支撑/反转"
-            })
+            patterns_detected.append(
+                {
+                    "pattern": label,
+                    "type": "reversal_signal",
+                    "day_offset": -(n - 1 - i),
+                    "strength": "中",
+                    "desc": "下影线长，潜在支撑/反转",
+                }
+            )
 
         # Shooting Star / Inverted Hammer
         if us > body(i) * 2 and ls < body(i) * 0.5:
             label = "流星线 (Shooting Star)" if is_bearish(i) else "倒锤子"
-            patterns_detected.append({
-                "pattern": label, "type": "bearish_signal",
-                "day_offset": -(n - 1 - i),
-                "strength": "中", "desc": "上影线长，潜在压力/反转"
-            })
+            patterns_detected.append(
+                {
+                    "pattern": label,
+                    "type": "bearish_signal",
+                    "day_offset": -(n - 1 - i),
+                    "strength": "中",
+                    "desc": "上影线长，潜在压力/反转",
+                }
+            )
 
         # Big bullish / bearish candle
         if bd > avg_body * 2.5:
             label = "大阳线" if is_bullish(i) else "大阴线"
             t = "bullish" if is_bullish(i) else "bearish"
-            patterns_detected.append({
-                "pattern": label, "type": t,
-                "day_offset": -(n - 1 - i),
-                "strength": "强", "desc": "实体大，方向明确"
-            })
+            patterns_detected.append(
+                {"pattern": label, "type": t, "day_offset": -(n - 1 - i), "strength": "强", "desc": "实体大，方向明确"}
+            )
 
     # --- Multi-candle patterns (use last 10 days) ---
     if n >= 3:
         i = n - 1
         # Morning Star (早晨之星) — bottom reversal
-        if (is_bearish(i - 2) and body(i - 2) > avg_body * 1.5
-                and body(i - 1) < avg_body * 0.4
-                and is_bullish(i) and body(i) > avg_body * 1.5
-                and c[i] > (o[i - 2] + c[i - 2]) / 2):
-            patterns_detected.append({
-                "pattern": "早晨之星 (Morning Star)", "type": "bullish_reversal",
-                "day_offset": -2, "strength": "强", "desc": "三根K线底部反转形态"
-            })
+        if (
+            is_bearish(i - 2)
+            and body(i - 2) > avg_body * 1.5
+            and body(i - 1) < avg_body * 0.4
+            and is_bullish(i)
+            and body(i) > avg_body * 1.5
+            and c[i] > (o[i - 2] + c[i - 2]) / 2
+        ):
+            patterns_detected.append(
+                {
+                    "pattern": "早晨之星 (Morning Star)",
+                    "type": "bullish_reversal",
+                    "day_offset": -2,
+                    "strength": "强",
+                    "desc": "三根K线底部反转形态",
+                }
+            )
 
         # Evening Star (黄昏之星) — top reversal
-        if (is_bullish(i - 2) and body(i - 2) > avg_body * 1.5
-                and body(i - 1) < avg_body * 0.4
-                and is_bearish(i) and body(i) > avg_body * 1.5
-                and c[i] < (o[i - 2] + c[i - 2]) / 2):
-            patterns_detected.append({
-                "pattern": "黄昏之星 (Evening Star)", "type": "bearish_reversal",
-                "day_offset": -2, "strength": "强", "desc": "三根K线顶部反转形态"
-            })
+        if (
+            is_bullish(i - 2)
+            and body(i - 2) > avg_body * 1.5
+            and body(i - 1) < avg_body * 0.4
+            and is_bearish(i)
+            and body(i) > avg_body * 1.5
+            and c[i] < (o[i - 2] + c[i - 2]) / 2
+        ):
+            patterns_detected.append(
+                {
+                    "pattern": "黄昏之星 (Evening Star)",
+                    "type": "bearish_reversal",
+                    "day_offset": -2,
+                    "strength": "强",
+                    "desc": "三根K线顶部反转形态",
+                }
+            )
 
         # Engulfing (吞没形态)
-        if (is_bullish(i) and is_bearish(i - 1)
-                and o[i] < c[i - 1] and c[i] > o[i - 1]):
-            patterns_detected.append({
-                "pattern": "看涨吞没 (Bullish Engulfing)", "type": "bullish_reversal",
-                "day_offset": -1, "strength": "强", "desc": "阳线完全覆盖前一阴线"
-            })
-        elif (is_bearish(i) and is_bullish(i - 1)
-              and o[i] > c[i - 1] and c[i] < o[i - 1]):
-            patterns_detected.append({
-                "pattern": "看跌吞没 (Bearish Engulfing)", "type": "bearish_reversal",
-                "day_offset": -1, "strength": "强", "desc": "阴线完全覆盖前一阳线"
-            })
+        if is_bullish(i) and is_bearish(i - 1) and o[i] < c[i - 1] and c[i] > o[i - 1]:
+            patterns_detected.append(
+                {
+                    "pattern": "看涨吞没 (Bullish Engulfing)",
+                    "type": "bullish_reversal",
+                    "day_offset": -1,
+                    "strength": "强",
+                    "desc": "阳线完全覆盖前一阴线",
+                }
+            )
+        elif is_bearish(i) and is_bullish(i - 1) and o[i] > c[i - 1] and c[i] < o[i - 1]:
+            patterns_detected.append(
+                {
+                    "pattern": "看跌吞没 (Bearish Engulfing)",
+                    "type": "bearish_reversal",
+                    "day_offset": -1,
+                    "strength": "强",
+                    "desc": "阴线完全覆盖前一阳线",
+                }
+            )
 
     # --- Chart patterns over the window ---
     # Double bottom detection (简化版: 两个相近低点 + 中间高点)
@@ -432,34 +476,47 @@ def _handle_analyze_pattern(stock_code: str, days: int = 60) -> dict:
     if len(recent_lows_idx) >= 2:
         lo1, lo2 = sorted(recent_lows_idx[:2])
         if lo2 - lo1 >= 5 and abs(l[lo1] - l[lo2]) / max(l[lo1], l[lo2]) < 0.03:
-            mid_high = max(h[lo1:lo2 + 1])
+            mid_high = max(h[lo1 : lo2 + 1])
             if mid_high > l[lo1] * 1.03:
-                patterns_detected.append({
-                    "pattern": "双底 (Double Bottom)", "type": "bullish_reversal",
-                    "day_offset": -(n - 1 - lo2),
-                    "strength": "强", "desc": "两个相近低点，W型底部形态"
-                })
+                patterns_detected.append(
+                    {
+                        "pattern": "双底 (Double Bottom)",
+                        "type": "bullish_reversal",
+                        "day_offset": -(n - 1 - lo2),
+                        "strength": "强",
+                        "desc": "两个相近低点，W型底部形态",
+                    }
+                )
 
     # Upward breakout: closes above 20d high (excluding last day itself)
     if n >= 21:
-        high_20d = max(h[n - 21:n - 1])
-        if c[-1] > high_20d and (v is None or v[-1] > sum(v[n - 6:n - 1]) / 5 * 1.5):
-            patterns_detected.append({
-                "pattern": "放量突破20日高点", "type": "bullish_breakout",
-                "day_offset": 0, "strength": "强", "desc": "收盘突破近20日最高，量能配合"
-            })
+        high_20d = max(h[n - 21 : n - 1])
+        if c[-1] > high_20d and (v is None or v[-1] > sum(v[n - 6 : n - 1]) / 5 * 1.5):
+            patterns_detected.append(
+                {
+                    "pattern": "放量突破20日高点",
+                    "type": "bullish_breakout",
+                    "day_offset": 0,
+                    "strength": "强",
+                    "desc": "收盘突破近20日最高，量能配合",
+                }
+            )
 
     # Price in consolidation box (box oscillation)
     if n >= 10:
-        recent_high = max(h[n - 10:])
-        recent_low = min(l[n - 10:])
+        recent_high = max(h[n - 10 :])
+        recent_low = min(l[n - 10 :])
         box_range_pct = (recent_high - recent_low) / recent_low * 100 if recent_low > 0 else 0
         if box_range_pct < 8:
-            patterns_detected.append({
-                "pattern": "箱体震荡", "type": "consolidation",
-                "day_offset": 0, "strength": "中",
-                "desc": f"近10日波幅 {box_range_pct:.1f}%，价格在区间内震荡"
-            })
+            patterns_detected.append(
+                {
+                    "pattern": "箱体震荡",
+                    "type": "consolidation",
+                    "day_offset": 0,
+                    "strength": "中",
+                    "desc": f"近10日波幅 {box_range_pct:.1f}%，价格在区间内震荡",
+                }
+            )
 
     # Deduplicate by pattern name, keep most recent
     seen = set()
@@ -477,19 +534,16 @@ def _handle_analyze_pattern(stock_code: str, days: int = 60) -> dict:
         "current_price": round(float(c[-1]), 2),
         "patterns_count": len(unique_patterns),
         "patterns": unique_patterns,
-        "summary": (
-            "未发现明显形态" if not unique_patterns
-            else "、".join(p["pattern"] for p in unique_patterns)
-        ),
+        "summary": ("未发现明显形态" if not unique_patterns else "、".join(p["pattern"] for p in unique_patterns)),
     }
 
 
 analyze_pattern_tool = ToolDefinition(
     name="analyze_pattern",
     description="Detect candlestick and chart patterns in recent price history. "
-                "Identifies: Doji, Hammer, Shooting Star, Morning/Evening Star, Engulfing, "
-                "Double Bottom, upward breakout, box oscillation, and more. "
-                "Returns pattern list with type (bullish/bearish/reversal) and strength.",
+    "Identifies: Doji, Hammer, Shooting Star, Morning/Evening Star, Engulfing, "
+    "Double Bottom, upward breakout, box oscillation, and more. "
+    "Returns pattern list with type (bullish/bearish/reversal) and strength.",
     parameters=[
         ToolParameter(
             name="stock_code",
