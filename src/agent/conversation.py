@@ -7,7 +7,7 @@ Manages conversation sessions with TTL, storing message history and context.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List
 
 from src.storage import get_db

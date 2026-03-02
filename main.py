@@ -44,7 +44,7 @@ import sys
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from typing import List, Optional
 from typing import List, Optional
 
 from data_provider.base import canonical_stock_code

@@ -1,8 +1,7 @@
 # feishu_doc.py
 # -*- coding: utf-8 -*-
-import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import lark_oapi as lark
 from lark_oapi.api.docx.v1 import *

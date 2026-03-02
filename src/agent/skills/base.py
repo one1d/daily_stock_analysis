@@ -9,9 +9,11 @@ Strategies are pluggable trading analysis modules defined in **natural language*
 Users can write custom strategies by creating a YAML file — no Python code needed.
 See ``strategies/README.md`` for the format specification.
 """
-
 import logging
-import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Union

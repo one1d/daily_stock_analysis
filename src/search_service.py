@@ -12,13 +12,12 @@ A股自选股智能分析系统 - 搜索服务模块
 """
 
 import logging
-import random
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from itertools import cycle
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import requests
 from newspaper import Article, Config

@@ -15,7 +15,6 @@
 
 import logging
 import signal
-import sys
 import threading
 import time
 from datetime import datetime
